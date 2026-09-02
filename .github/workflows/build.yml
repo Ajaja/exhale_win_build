@@ -60,25 +60,11 @@ jobs:
           cd build
           cmake .. -G "MSYS Makefiles" -DCMAKE_CXX_FLAGS="-static -O3" -DCMAKE_BUILD_TYPE=Release
           make -j$(nproc)
-
-      - name: Locate built executable
-        id: locate
-        run: |
-          set -e
-          cd exhale
-          BIN_PATH="$(find . -type f \( -iname 'exhale.exe' -o -iname 'exhaleApp.exe' \) | head -n1)"
-          if [ -z "$BIN_PATH" ]; then
-            echo "Could not find built exhale executable" >&2
-            find . -maxdepth 4 -iname '*.exe'
-            exit 1
-          fi
-          echo "Found binary: $BIN_PATH"
-          mkdir -p ../dist
-          cp "$BIN_PATH" "../dist/exhale.exe"
+          strip --strip-all src/app/exhale.exe
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: exhale-${{ steps.version.outputs.version }}-clang64
-          path: dist/exhale.exe
+          path: exhale/build/src/app/exhale.exe
           if-no-files-found: error
