@@ -1,0 +1,84 @@
+name: Build exhale (MSYS2 CLANG64)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "exhale git ref (tag/branch/commit) to build; leave empty for default branch"
+        required: false
+        default: ""
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Setup MSYS2 (CLANG64 environment)
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: CLANG64
+          update: true
+          install: >-
+            git
+            make
+            mingw-w64-clang-x86_64-clang
+            mingw-w64-clang-x86_64-cmake
+            mingw-w64-clang-x86_64-ninja
+
+      - name: Clone exhale
+        run: |
+          set -e
+          REF="${{ github.event.inputs.ref }}"
+          git clone https://gitlab.com/ecodis/exhale.git exhale
+          cd exhale
+          if [ -n "$REF" ]; then
+            git checkout "$REF"
+          fi
+
+      - name: Extract version info
+        id: version
+        run: |
+          set -e
+          cd exhale
+          # Prefer an actual tag if one points at HEAD, otherwise fall back to
+          # short commit hash so every build still gets a unique, sortable name.
+          TAG="$(git describe --tags --exact-match 2>/dev/null || true)"
+          if [ -z "$TAG" ]; then
+            TAG="$(git describe --tags --always 2>/dev/null || git rev-parse --short HEAD)"
+          fi
+          echo "version=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Resolved exhale version: ${TAG}"
+
+      - name: Configure and build
+        run: |
+          set -e
+          cd exhale
+          mkdir -p build
+          cd build
+          cmake .. -G "MSYS Makefiles" -DCMAKE_CXX_FLAGS="-static -O3" -DCMAKE_BUILD_TYPE=Release
+          make -j$(nproc)
+
+      - name: Locate built executable
+        id: locate
+        run: |
+          set -e
+          cd exhale
+          BIN_PATH="$(find . -type f \( -iname 'exhale.exe' -o -iname 'exhaleApp.exe' \) | head -n1)"
+          if [ -z "$BIN_PATH" ]; then
+            echo "Could not find built exhale executable" >&2
+            find . -maxdepth 4 -iname '*.exe'
+            exit 1
+          fi
+          echo "Found binary: $BIN_PATH"
+          mkdir -p ../dist
+          cp "$BIN_PATH" "../dist/exhale.exe"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: exhale-${{ steps.version.outputs.version }}-clang64
+          path: dist/exhale.exe
+          if-no-files-found: error
