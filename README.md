@@ -14,18 +14,6 @@ The workflow (`.github/workflows/build-exhale.yml`) does the following on a Wind
 4. Configures and builds with CMake (`-static -O3`, Release mode) and strips the resulting binary.
 5. Uploads `exhale.exe` as a build artifact.
 
-## Running it
-
-Go to **Actions → Build exhale (MSYS2 CLANG64) → Run workflow**.
-
-You can optionally set the **ref** input to a specific exhale tag, branch, or commit hash. Leave it blank to build the default branch (`master`).
-
-The workflow also runs automatically on push to `main` and on a weekly schedule, so it periodically picks up new exhale releases.
-
-## Getting the binary
-
-After a run finishes, download the `exhale-<version>-clang64` artifact from the workflow run's **Artifacts** section. It contains a single stripped `exhale.exe`.
-
 ## Credit
 
 All encoder source code and licensing belong to the upstream [ecodis/exhale](https://gitlab.com/ecodis/exhale) project by Christian R. Helmrich. This repository only automates building it; see the upstream repository for usage instructions and license terms.
